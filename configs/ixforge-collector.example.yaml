@@ -1,0 +1,29 @@
+log_level: info
+
+http:
+  address: "127.0.0.1:9200"
+
+core:
+  url: "http://localhost:8000"
+  api_key: ""
+  targets_interval: 60s
+  timeout: 10s
+
+victoriametrics:
+  url: "http://localhost:8428/api/v1/import/prometheus"
+  timeout: 10s
+
+polling:
+  icmp:
+    enabled: false
+    interval: 30s
+    count: 3
+    timeout: 5s
+    max_concurrency: 50
+  snmp:
+    enabled: false
+    interval: 60s
+    timeout: 10s
+    retries: 2
+    max_repetitions: 25
+    max_concurrency: 5
