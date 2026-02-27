@@ -1,0 +1,13 @@
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.106.1
+    ports:
+      - "8428:8428"
+    volumes:
+      - vm-data:/victoria-metrics-data
+    command:
+      - "-httpListenAddr=:8428"
+      - "-retentionPeriod=30d"
+
+volumes:
+  vm-data:

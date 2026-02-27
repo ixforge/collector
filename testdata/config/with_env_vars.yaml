@@ -1,0 +1,14 @@
+log_level: ${LOG_LEVEL}
+
+http:
+  address: "127.0.0.1:9200"
+
+core:
+  url: "${CORE_URL}"
+  api_key: "${CORE_API_KEY}"
+  targets_interval: 60s
+  timeout: 10s
+
+victoriametrics:
+  url: "${VM_URL}"
+  timeout: 10s
