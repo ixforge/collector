@@ -18,7 +18,7 @@ class RateCalculator:
     """Calcula rates a partir de contadores SNMP
 
     Es thread-safe para uso concurrente desde multiples threads.
-    La key se construye como: switchHostname/ifName/metricName
+    La key se construye como: switchName/ifName/metricName
     """
 
     def __init__(self) -> None:
@@ -27,7 +27,7 @@ class RateCalculator:
 
     def calculate(
         self,
-        switch_hostname: str,
+        switch_name: str,
         if_name: str,
         metric_name: str,
         current_value: int,
@@ -37,7 +37,7 @@ class RateCalculator:
 
         Retorna -1 si es el primer poll o si el delta de tiempo es invalido
         """
-        key = f"{switch_hostname}/{if_name}/{metric_name}"
+        key = f"{switch_name}/{if_name}/{metric_name}"
 
         with self._lock:
             prev = self._state.get(key)
@@ -59,9 +59,9 @@ class RateCalculator:
 
             return delta_value / delta_seconds
 
-    def clear_state(self, switch_hostname: str, if_name: str) -> None:
+    def clear_state(self, switch_name: str, if_name: str) -> None:
         """Elimina el estado de una interfaz especifica"""
-        prefix = f"{switch_hostname}/{if_name}/"
+        prefix = f"{switch_name}/{if_name}/"
 
         with self._lock:
             keys_to_remove = [k for k in self._state if k.startswith(prefix)]

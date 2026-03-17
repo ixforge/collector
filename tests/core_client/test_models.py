@@ -7,17 +7,17 @@ class TestSwitchTarget:
     def test_create(self) -> None:
         sw = SwitchTarget(
             id=UUID("00000000-0000-0000-0000-000000000001"),
-            hostname="switch1",
+            name="switch1",
             management_ip="10.0.0.1",
             snmp_community="public",
         )
-        assert sw.hostname == "switch1"
+        assert sw.name == "switch1"
         assert sw.management_ip == "10.0.0.1"
 
     def test_optional_fields(self) -> None:
         sw = SwitchTarget(
             id=UUID("00000000-0000-0000-0000-000000000001"),
-            hostname="switch1",
+            name="switch1",
             management_ip=None,
             snmp_community=None,
         )
@@ -70,7 +70,7 @@ class TestMonitoringTargets:
     def test_with_data(self) -> None:
         sw = SwitchTarget(
             id=UUID("00000000-0000-0000-0000-000000000001"),
-            hostname="sw1",
+            name="sw1",
             management_ip="10.0.0.1",
             snmp_community="public",
         )

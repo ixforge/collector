@@ -12,7 +12,7 @@ class TestParseTargets:
             "switches": [
                 {
                     "id": "00000000-0000-0000-0000-000000000001",
-                    "hostname": "switch1",
+                    "name": "switch1",
                     "management_ip": "10.0.0.1",
                     "snmp_community": "public",
                 },
@@ -37,7 +37,7 @@ class TestParseTargets:
         }
         targets = _parse_targets(data)
         assert len(targets.switches) == 1
-        assert targets.switches[0].hostname == "switch1"
+        assert targets.switches[0].name == "switch1"
         assert len(targets.ports) == 1
         assert targets.ports[0].name == "GE0/0/1"
         assert len(targets.member_ips) == 1
@@ -71,7 +71,7 @@ class TestCoreClient:
             "switches": [
                 {
                     "id": "00000000-0000-0000-0000-000000000001",
-                    "hostname": "switch1",
+                    "name": "switch1",
                     "management_ip": "10.0.0.1",
                     "snmp_community": "public",
                 },
@@ -96,7 +96,7 @@ class TestCoreClient:
 
         targets = await client.fetch_targets()
         assert len(targets.switches) == 1
-        assert targets.switches[0].hostname == "switch1"
+        assert targets.switches[0].name == "switch1"
 
     async def test_health_check_ok(self) -> None:
         async def mock_handler(request: httpx.Request) -> httpx.Response:

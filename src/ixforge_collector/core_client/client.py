@@ -51,7 +51,7 @@ def _parse_targets(data: dict) -> MonitoringTargets:
     switches = [
         SwitchTarget(
             id=UUID(sw["id"]),
-            hostname=sw["hostname"],
+            name=sw["name"],
             management_ip=sw.get("management_ip"),
             snmp_community=sw.get("snmp_community"),
         )

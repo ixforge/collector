@@ -78,12 +78,12 @@ _TEST_UUID_2 = UUID("00000000-0000-0000-0000-000000000002")
 
 def _make_switch(
     switch_id: UUID = _TEST_UUID,
-    hostname: str = "switch1",
+    name: str = "switch1",
     snmp_community: str = "public",
 ) -> SwitchTarget:
     return SwitchTarget(
         id=switch_id,
-        hostname=hostname,
+        name=name,
         management_ip="10.0.0.1",
         snmp_community=snmp_community,
     )
@@ -195,7 +195,7 @@ class TestPollInterfaces:
                 f"{OID_IF_OUT_DISCARDS}.1": SNMPResult(oid=f"{OID_IF_OUT_DISCARDS}.1", value=1),
             },
         )
-        sw = _make_switch(hostname="switch1.example.com")
+        sw = _make_switch(name="switch1.example.com")
         if_names = {1: "GigabitEthernet0/0/1"}
         c = Collector(cfg=SNMPConfig())
         results = await c._poll_interfaces(mock_client, sw, if_names)

@@ -83,7 +83,7 @@ class Collector:
             if not sw.snmp_community:
                 self._logger.warning(
                     "skipping switch without SNMP community",
-                    switch=sw.hostname,
+                    switch=sw.name,
                     switch_id=str(sw.id),
                 )
 
@@ -151,7 +151,7 @@ class Collector:
         """Ejecuta el polling usando un cliente SNMP ya creado"""
         if_names = await self._discover_interfaces(client)
 
-        self._logger.debug("discovered interfaces", switch=sw.hostname, count=len(if_names))
+        self._logger.debug("discovered interfaces", switch=sw.name, count=len(if_names))
 
         if not if_names:
             return []
@@ -166,7 +166,7 @@ class Collector:
             port = port_map.get(key)
 
             im = InterfaceMetrics(
-                switch_hostname=sw.hostname,
+                switch_name=sw.name,
                 switch_id=str(sw.id),
                 if_name=pr.if_name,
                 oper_status=pr.oper_status,
@@ -178,8 +178,8 @@ class Collector:
                 im.member_id = str(port.member_id) if port.member_id else ""
 
             # Calcular rates de trafico (octets -> bps)
-            in_rate = self._rate_calc.calculate(sw.hostname, pr.if_name, "in_octets", pr.in_octets, now)
-            out_rate = self._rate_calc.calculate(sw.hostname, pr.if_name, "out_octets", pr.out_octets, now)
+            in_rate = self._rate_calc.calculate(sw.name, pr.if_name, "in_octets", pr.in_octets, now)
+            out_rate = self._rate_calc.calculate(sw.name, pr.if_name, "out_octets", pr.out_octets, now)
 
             if in_rate >= 0:
                 im.traffic_in_bps = in_rate * 8  # bytes -> bits
@@ -187,8 +187,8 @@ class Collector:
                 im.traffic_out_bps = out_rate * 8
 
             # Calcular rates de paquetes
-            in_pkt_rate = self._rate_calc.calculate(sw.hostname, pr.if_name, "in_pkts", pr.in_ucast_pkts, now)
-            out_pkt_rate = self._rate_calc.calculate(sw.hostname, pr.if_name, "out_pkts", pr.out_ucast_pkts, now)
+            in_pkt_rate = self._rate_calc.calculate(sw.name, pr.if_name, "in_pkts", pr.in_ucast_pkts, now)
+            out_pkt_rate = self._rate_calc.calculate(sw.name, pr.if_name, "out_pkts", pr.out_ucast_pkts, now)
 
             if in_pkt_rate >= 0:
                 im.packets_in_pps = in_pkt_rate
@@ -265,13 +265,13 @@ class Collector:
             except Exception:
                 self._logger.warning(
                     "failed to get counters for interface",
-                    switch=sw.hostname,
+                    switch=sw.name,
                     interface=name,
                 )
                 continue
 
             pr = InterfacePollResult(
-                switch_hostname=sw.hostname,
+                switch_name=sw.name,
                 switch_id=str(sw.id),
                 if_index=if_index,
                 if_name=name,
