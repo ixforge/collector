@@ -5,7 +5,7 @@ from uuid import UUID
 @dataclass(frozen=True, slots=True)
 class SwitchTarget:
     id: UUID
-    hostname: str
+    name: str
     management_ip: str | None
     snmp_community: str | None
 

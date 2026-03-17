@@ -22,7 +22,7 @@ class TestOperStatusLabel:
 class TestInterfacePollResult:
     def test_fields_accessible(self) -> None:
         pr = InterfacePollResult(
-            switch_hostname="switch1",
+            switch_name="switch1",
             switch_id="uuid-1",
             if_index=10,
             if_name="GE0/0/1",
@@ -37,13 +37,13 @@ class TestInterfacePollResult:
             out_discards=3,
             timestamp=datetime.now(tz=UTC),
         )
-        assert pr.switch_hostname == "switch1"
+        assert pr.switch_name == "switch1"
         assert pr.if_index == 10
         assert pr.in_octets == 1000000
 
     def test_default_values(self) -> None:
         pr = InterfacePollResult(
-            switch_hostname="switch1",
+            switch_name="switch1",
             switch_id="uuid-1",
             if_index=1,
             if_name="eth0",
@@ -58,7 +58,7 @@ class TestInterfaceMetrics:
     def test_to_metrics_generates_eight(self) -> None:
         ts = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
         im = InterfaceMetrics(
-            switch_hostname="switch1.example.com",
+            switch_name="switch1.example.com",
             switch_id="uuid-1",
             if_name="GE0/0/1",
             port_id="uuid-port-10",
@@ -80,7 +80,7 @@ class TestInterfaceMetrics:
     def test_to_metrics_values(self) -> None:
         ts = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
         im = InterfaceMetrics(
-            switch_hostname="switch1.example.com",
+            switch_name="switch1.example.com",
             switch_id="uuid-1",
             if_name="GE0/0/1",
             port_id="uuid-port-10",
@@ -110,7 +110,7 @@ class TestInterfaceMetrics:
     def test_to_metrics_labels(self) -> None:
         ts = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
         im = InterfaceMetrics(
-            switch_hostname="switch1.example.com",
+            switch_name="switch1.example.com",
             switch_id="uuid-1",
             if_name="GE0/0/1",
             port_id="uuid-port-5",
@@ -121,7 +121,7 @@ class TestInterfaceMetrics:
         )
         metrics = im.to_metrics()
         for m in metrics:
-            assert m.labels["hostname"] == "switch1.example.com"
+            assert m.labels["switch_name"] == "switch1.example.com"
             assert m.labels["ifname"] == "GE0/0/1"
             assert m.labels["switch_id"] == "uuid-1"
             assert m.labels["port_id"] == "uuid-port-5"
@@ -131,7 +131,7 @@ class TestInterfaceMetrics:
     def test_to_metrics_labels_are_independent_copies(self) -> None:
         ts = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
         im = InterfaceMetrics(
-            switch_hostname="switch1",
+            switch_name="switch1",
             switch_id="uuid-1",
             if_name="eth0",
             timestamp=ts,
@@ -143,7 +143,7 @@ class TestInterfaceMetrics:
     def test_to_metrics_timestamp(self) -> None:
         ts = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
         im = InterfaceMetrics(
-            switch_hostname="switch1",
+            switch_name="switch1",
             switch_id="uuid-1",
             if_name="eth0",
             timestamp=ts,

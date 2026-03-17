@@ -12,7 +12,7 @@ class InterfacePollResult:
     Estos son los contadores tal como vienen del switch
     """
 
-    switch_hostname: str
+    switch_name: str
     switch_id: str
     if_index: int
     if_name: str
@@ -47,7 +47,7 @@ _METRIC_NAMES = [
 class InterfaceMetrics:
     """Contiene las metricas calculadas (rates) listas para enviar"""
 
-    switch_hostname: str
+    switch_name: str
     switch_id: str
     if_name: str
     port_id: str = ""
@@ -68,7 +68,7 @@ class InterfaceMetrics:
         ts = self.timestamp if self.timestamp is not None else datetime.now()
 
         labels = {
-            "hostname": self.switch_hostname,
+            "switch_name": self.switch_name,
             "ifname": self.if_name,
             "switch_id": self.switch_id,
             "port_id": self.port_id,

@@ -24,9 +24,9 @@ if TYPE_CHECKING:
 async def new_snmp_client(cfg: SNMPConfig, sw: SwitchTarget) -> SNMPClient:
     """Crea un nuevo cliente SNMP para el switch especificado"""
     if not sw.management_ip:
-        raise ValueError(f"switch {sw.hostname} has no management IP")
+        raise ValueError(f"switch {sw.name} has no management IP")
     if not sw.snmp_community:
-        raise ValueError(f"switch {sw.hostname} has no SNMP community")
+        raise ValueError(f"switch {sw.name} has no SNMP community")
 
     timeout_secs = int(cfg.timeout.total_seconds())
 
