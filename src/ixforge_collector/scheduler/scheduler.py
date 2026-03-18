@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
@@ -79,18 +79,18 @@ class _Task:
     async def _run(self, logger: structlog.stdlib.BoundLogger) -> None:
         """Ejecuta el collector y registra errores"""
         name = self.collector.name()
-        start = datetime.now()
+        start = datetime.now(UTC)
 
         try:
             await self.collector.collect()
         except Exception:
-            duration = datetime.now() - start
-            self.last_run = datetime.now()
+            duration = datetime.now(UTC) - start
+            self.last_run = datetime.now(UTC)
             logger.error("collector failed", collector=name, duration=str(duration), exc_info=True)
             return
 
-        duration = datetime.now() - start
-        self.last_run = datetime.now()
+        duration = datetime.now(UTC) - start
+        self.last_run = datetime.now(UTC)
         logger.debug("collector completed", collector=name, duration=str(duration))
 
     async def loop(self, logger: structlog.stdlib.BoundLogger) -> None:

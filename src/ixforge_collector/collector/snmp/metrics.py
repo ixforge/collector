@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 
 from ixforge_collector.collector.snmp.oids import OperStatus
 from ixforge_collector.metrics.victoria import Metric, copy_labels
@@ -65,7 +65,7 @@ class InterfaceMetrics:
 
     def to_metrics(self) -> list[Metric]:
         """Convierte InterfaceMetrics a metricas para VictoriaMetrics"""
-        ts = self.timestamp if self.timestamp is not None else datetime.now()
+        ts = self.timestamp if self.timestamp is not None else datetime.now(UTC)
 
         labels = {
             "switch_name": self.switch_name,
