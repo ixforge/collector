@@ -59,24 +59,20 @@ def with_component(logger: structlog.stdlib.BoundLogger, component: str) -> stru
 
 
 def nop() -> structlog.stdlib.BoundLogger:
-    """Retorna un logger que descarta toda la salida"""
-    nop_logger = logging.getLogger("ixforge_collector.nop")
-    nop_logger.handlers = [logging.StreamHandler(io.StringIO())]
-    nop_logger.propagate = False
-    nop_logger.setLevel(logging.CRITICAL + 1)
+    """Retorna un logger que descarta toda la salida sin tocar la config global"""
+    silent = logging.getLogger("ixforge_collector.nop")
+    silent.handlers = [logging.StreamHandler(io.StringIO())]
+    silent.propagate = False
+    silent.setLevel(logging.CRITICAL + 1)
 
-    structlog.configure(
+    return structlog.wrap_logger(
+        silent,
         processors=[
             structlog.stdlib.add_log_level,
             structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.stdlib.BoundLogger,
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        cache_logger_on_first_use=False,
     )
-
-    return structlog.wrap_logger(nop_logger)
 
 
 def _parse_level(level: str) -> int:

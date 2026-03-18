@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
 from ipaddress import ip_address
 from typing import TYPE_CHECKING
 
@@ -40,7 +40,7 @@ class App:
 
     async def start(self) -> None:
         """Inicia todos los componentes en orden"""
-        self._start_time = datetime.now()
+        self._start_time = datetime.now(UTC)
         log = with_component(self._logger, "app")
         log.info("starting ixforge-collector daemon")
 
@@ -70,7 +70,7 @@ class App:
         await self._start_http_server(log)
 
         self._set_status("ok")
-        elapsed = datetime.now() - self._start_time
+        elapsed = datetime.now(UTC) - self._start_time
         log.info("startup complete", uptime=str(elapsed))
 
         self._poll_task = asyncio.create_task(self._poll_targets_loop())
@@ -222,6 +222,7 @@ class App:
                     await self._poll_targets(log)
                 except Exception:
                     log.exception("failed to poll targets")
+                    self._set_status("degraded")
         except asyncio.CancelledError:
             pass
 
@@ -341,7 +342,7 @@ class App:
         if self._start_time is None:
             return ""
 
-        total_secs = int((datetime.now() - self._start_time).total_seconds())
+        total_secs = int((datetime.now(UTC) - self._start_time).total_seconds())
         hours, remainder = divmod(total_secs, 3600)
         minutes, seconds = divmod(remainder, 60)
 

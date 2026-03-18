@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import httpx
@@ -54,7 +54,7 @@ class Writer:
         metric = Metric(
             name="ixforge_collector_startup",
             value=1,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             labels={"type": "test"},
         )
         await self.write(metric)

@@ -77,7 +77,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _load_config(path: str) -> tuple:
+def _load_config(path: str) -> tuple[Config, list[str]]:
     """Carga configuracion desde archivo"""
     try:
         return load_from_file(path)

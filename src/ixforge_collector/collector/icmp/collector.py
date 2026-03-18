@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from ipaddress import IPv4Address, IPv6Address
 from typing import Any, Protocol
 
@@ -111,19 +111,17 @@ class Collector:
 
         # Ejecutar fping en paralelo para v4 y v6
         fping_results: dict[str, Any] = {}
-        tasks: list[asyncio.Task[dict[str, Any]]] = []
-
+        coros = []
         if v4_ips:
-            tasks.append(asyncio.create_task(self._run_fping_safe(v4_ips)))
+            coros.append(self._run_fping_safe(v4_ips))
         if v6_ips:
-            tasks.append(asyncio.create_task(self._run_fping_safe(v6_ips)))
+            coros.append(self._run_fping_safe(v6_ips))
 
-        for task in tasks:
-            result = await task
-            fping_results.update(result)
+        for partial in await asyncio.gather(*coros):
+            fping_results.update(partial)
 
         # Convertir resultados de fping a PingResult
-        now = datetime.now()
+        now = datetime.now(UTC)
         ping_results: list[PingResult] = []
 
         for target in targets:

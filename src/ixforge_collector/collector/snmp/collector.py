@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 import structlog
@@ -159,7 +159,7 @@ class Collector:
         poll_results = await self._poll_interfaces(client, sw, if_names)
 
         all_metrics: list[Metric] = []
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         for pr in poll_results:
             key = _build_interface_key(str(sw.id), pr.if_name)
@@ -222,10 +222,6 @@ class Collector:
         if not results:
             return {}
 
-        # Detectar si los resultados vienen de ifDescr
-        if "2.2.1.2" in results[0].oid:
-            base_oid = OID_IF_DESCR
-
         if_names: dict[int, str] = {}
 
         for r in results:
@@ -246,7 +242,7 @@ class Collector:
     ) -> list[InterfacePollResult]:
         """Obtiene contadores para las interfaces descubiertas usando GET"""
         poll_results: list[InterfacePollResult] = []
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         for if_index, name in if_names.items():
             oids = [

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from ipaddress import IPv4Address, IPv6Address
 
 from ixforge_collector.metrics.victoria import Metric, copy_labels
@@ -35,7 +35,7 @@ class PingResult:
 
     def to_metrics(self) -> list[Metric]:
         """Convierte el resultado de ping a metricas para VictoriaMetrics"""
-        ts = self.timestamp if self.timestamp is not None else datetime.now()
+        ts = self.timestamp if self.timestamp is not None else datetime.now(UTC)
 
         labels = {
             "ip": str(self.ip),
