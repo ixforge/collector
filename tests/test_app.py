@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from ipaddress import IPv4Address
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
@@ -61,7 +61,7 @@ class TestAppGetHealth:
     def test_uptime_format_hours(self) -> None:
         cfg = _make_config()
         app = App(cfg)
-        app._start_time = datetime.now() - timedelta(hours=1, minutes=30, seconds=5)
+        app._start_time = datetime.now(UTC) - timedelta(hours=1, minutes=30, seconds=5)
         app._set_status("ok")
         health = app.get_health()
         assert health.uptime == "1h30m5s"
@@ -69,14 +69,14 @@ class TestAppGetHealth:
     def test_uptime_format_minutes(self) -> None:
         cfg = _make_config()
         app = App(cfg)
-        app._start_time = datetime.now() - timedelta(minutes=5, seconds=10)
+        app._start_time = datetime.now(UTC) - timedelta(minutes=5, seconds=10)
         health = app.get_health()
         assert health.uptime == "5m10s"
 
     def test_uptime_format_seconds(self) -> None:
         cfg = _make_config()
         app = App(cfg)
-        app._start_time = datetime.now() - timedelta(seconds=42)
+        app._start_time = datetime.now(UTC) - timedelta(seconds=42)
         health = app.get_health()
         assert health.uptime == "42s"
 
