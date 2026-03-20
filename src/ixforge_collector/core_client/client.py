@@ -47,36 +47,49 @@ class CoreClient:
 
 
 def _parse_targets(data: dict) -> MonitoringTargets:
-    """Parsea la respuesta JSON del Core a DTOs"""
-    switches = [
-        SwitchTarget(
-            id=UUID(sw["id"]),
-            name=sw["name"],
-            management_ip=sw.get("management_ip"),
-            snmp_community=sw.get("snmp_community"),
-        )
-        for sw in data.get("switches", [])
-    ]
+    """Parsea la respuesta JSON del Core a DTOs
 
-    ports = [
-        PortTarget(
-            id=UUID(p["id"]),
-            switch_id=UUID(p["switch_id"]),
-            name=p["name"],
-            speed=p["speed"],
-            member_id=UUID(p["member_id"]) if p.get("member_id") else None,
-        )
-        for p in data.get("ports", [])
-    ]
+    Valida la estructura de la respuesta y lanza ValueError
+    con contexto si los datos son invalidos
+    """
+    try:
+        switches = [
+            SwitchTarget(
+                id=UUID(sw["id"]),
+                name=sw["name"],
+                management_ip=sw.get("management_ip"),
+                snmp_community=sw.get("snmp_community"),
+            )
+            for sw in data.get("switches", [])
+        ]
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ValueError(f"invalid switch data in Core response: {exc}") from exc
 
-    member_ips = [
-        MemberIP(
-            member_id=UUID(m["member_id"]),
-            member_name=m["member_name"],
-            address=m["address"],
-            af=m["af"],
-        )
-        for m in data.get("member_ips", [])
-    ]
+    try:
+        ports = [
+            PortTarget(
+                id=UUID(p["id"]),
+                switch_id=UUID(p["switch_id"]),
+                name=p["name"],
+                speed=p["speed"],
+                member_id=UUID(p["member_id"]) if p.get("member_id") else None,
+            )
+            for p in data.get("ports", [])
+        ]
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ValueError(f"invalid port data in Core response: {exc}") from exc
+
+    try:
+        member_ips = [
+            MemberIP(
+                member_id=UUID(m["member_id"]),
+                member_name=m["member_name"],
+                address=m["address"],
+                af=m["af"],
+            )
+            for m in data.get("member_ips", [])
+        ]
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ValueError(f"invalid member_ip data in Core response: {exc}") from exc
 
     return MonitoringTargets(switches=switches, ports=ports, member_ips=member_ips)

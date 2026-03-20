@@ -182,17 +182,17 @@ class TestDiscoverInterfaces:
 
 
 class TestPollInterfaces:
-    async def test_poll_interfaces(self) -> None:
+    async def test_poll_interfaces_with_walks(self) -> None:
         mock_client = MockSNMPClient(
-            get_results={
-                f"{OID_IF_OPER_STATUS}.1": SNMPResult(oid=f"{OID_IF_OPER_STATUS}.1", value=1),
-                f"{OID_IF_HC_IN_OCTETS}.1": SNMPResult(oid=f"{OID_IF_HC_IN_OCTETS}.1", value=1000000),
-                f"{OID_IF_HC_OUT_OCTETS}.1": SNMPResult(oid=f"{OID_IF_HC_OUT_OCTETS}.1", value=500000),
-                f"{OID_IF_HC_IN_UCAST_PKTS}.1": SNMPResult(oid=f"{OID_IF_HC_IN_UCAST_PKTS}.1", value=10000),
-                f"{OID_IF_HC_OUT_UCAST_PKTS}.1": SNMPResult(oid=f"{OID_IF_HC_OUT_UCAST_PKTS}.1", value=5000),
-                f"{OID_IF_IN_ERRORS}.1": SNMPResult(oid=f"{OID_IF_IN_ERRORS}.1", value=5),
-                f"{OID_IF_OUT_ERRORS}.1": SNMPResult(oid=f"{OID_IF_OUT_ERRORS}.1", value=2),
-                f"{OID_IF_OUT_DISCARDS}.1": SNMPResult(oid=f"{OID_IF_OUT_DISCARDS}.1", value=1),
+            walk_results={
+                OID_IF_OPER_STATUS: [SNMPResult(oid=f"{OID_IF_OPER_STATUS}.1", value=1)],
+                OID_IF_HC_IN_OCTETS: [SNMPResult(oid=f"{OID_IF_HC_IN_OCTETS}.1", value=1000000)],
+                OID_IF_HC_OUT_OCTETS: [SNMPResult(oid=f"{OID_IF_HC_OUT_OCTETS}.1", value=500000)],
+                OID_IF_HC_IN_UCAST_PKTS: [SNMPResult(oid=f"{OID_IF_HC_IN_UCAST_PKTS}.1", value=10000)],
+                OID_IF_HC_OUT_UCAST_PKTS: [SNMPResult(oid=f"{OID_IF_HC_OUT_UCAST_PKTS}.1", value=5000)],
+                OID_IF_IN_ERRORS: [SNMPResult(oid=f"{OID_IF_IN_ERRORS}.1", value=5)],
+                OID_IF_OUT_ERRORS: [SNMPResult(oid=f"{OID_IF_OUT_ERRORS}.1", value=2)],
+                OID_IF_OUT_DISCARDS: [SNMPResult(oid=f"{OID_IF_OUT_DISCARDS}.1", value=1)],
             },
         )
         sw = _make_switch(name="switch1.example.com")
@@ -209,26 +209,69 @@ class TestPollInterfaces:
         assert pr.out_errors == 2
         assert pr.out_discards == 1
 
-    async def test_poll_interfaces_continues_on_error(self) -> None:
-        mock_client = MockSNMPClientWithFallback(
-            get_results={
-                f"{OID_IF_OPER_STATUS}.2": SNMPResult(oid=f"{OID_IF_OPER_STATUS}.2", value=1),
-                f"{OID_IF_HC_IN_OCTETS}.2": SNMPResult(oid=f"{OID_IF_HC_IN_OCTETS}.2", value=1000),
-                f"{OID_IF_HC_OUT_OCTETS}.2": SNMPResult(oid=f"{OID_IF_HC_OUT_OCTETS}.2", value=500),
-                f"{OID_IF_HC_IN_UCAST_PKTS}.2": SNMPResult(oid=f"{OID_IF_HC_IN_UCAST_PKTS}.2", value=100),
-                f"{OID_IF_HC_OUT_UCAST_PKTS}.2": SNMPResult(oid=f"{OID_IF_HC_OUT_UCAST_PKTS}.2", value=50),
-                f"{OID_IF_IN_ERRORS}.2": SNMPResult(oid=f"{OID_IF_IN_ERRORS}.2", value=0),
-                f"{OID_IF_OUT_ERRORS}.2": SNMPResult(oid=f"{OID_IF_OUT_ERRORS}.2", value=0),
-                f"{OID_IF_OUT_DISCARDS}.2": SNMPResult(oid=f"{OID_IF_OUT_DISCARDS}.2", value=0),
+    async def test_poll_interfaces_multiple(self) -> None:
+        mock_client = MockSNMPClient(
+            walk_results={
+                OID_IF_OPER_STATUS: [
+                    SNMPResult(oid=f"{OID_IF_OPER_STATUS}.1", value=1),
+                    SNMPResult(oid=f"{OID_IF_OPER_STATUS}.2", value=2),
+                ],
+                OID_IF_HC_IN_OCTETS: [
+                    SNMPResult(oid=f"{OID_IF_HC_IN_OCTETS}.1", value=1000),
+                    SNMPResult(oid=f"{OID_IF_HC_IN_OCTETS}.2", value=2000),
+                ],
+                OID_IF_HC_OUT_OCTETS: [
+                    SNMPResult(oid=f"{OID_IF_HC_OUT_OCTETS}.1", value=500),
+                    SNMPResult(oid=f"{OID_IF_HC_OUT_OCTETS}.2", value=1000),
+                ],
+                OID_IF_HC_IN_UCAST_PKTS: [],
+                OID_IF_HC_OUT_UCAST_PKTS: [],
+                OID_IF_IN_ERRORS: [],
+                OID_IF_OUT_ERRORS: [],
+                OID_IF_OUT_DISCARDS: [],
             },
-            fail_oids={f"{OID_IF_OPER_STATUS}.1"},
         )
         sw = _make_switch()
         if_names = {1: "eth0", 2: "eth1"}
         c = Collector(cfg=SNMPConfig())
         results = await c._poll_interfaces(mock_client, sw, if_names)
-        found_eth1 = any(r.if_name == "eth1" for r in results)
-        assert found_eth1
+        assert len(results) == 2
+        by_name = {r.if_name: r for r in results}
+        assert by_name["eth0"].oper_status == OperStatus.UP
+        assert by_name["eth1"].oper_status == OperStatus.DOWN
+        assert by_name["eth0"].in_octets == 1000
+        assert by_name["eth1"].in_octets == 2000
+
+    async def test_poll_interfaces_continues_on_walk_failure(self) -> None:
+        mock_client = MockSNMPClientWithFallback(
+            walk_results={
+                OID_IF_HC_IN_OCTETS: [
+                    SNMPResult(oid=f"{OID_IF_HC_IN_OCTETS}.1", value=1000),
+                    SNMPResult(oid=f"{OID_IF_HC_IN_OCTETS}.2", value=2000),
+                ],
+                OID_IF_HC_OUT_OCTETS: [
+                    SNMPResult(oid=f"{OID_IF_HC_OUT_OCTETS}.1", value=500),
+                    SNMPResult(oid=f"{OID_IF_HC_OUT_OCTETS}.2", value=1000),
+                ],
+                OID_IF_HC_IN_UCAST_PKTS: [],
+                OID_IF_HC_OUT_UCAST_PKTS: [],
+                OID_IF_IN_ERRORS: [],
+                OID_IF_OUT_ERRORS: [],
+                OID_IF_OUT_DISCARDS: [],
+            },
+            fail_oids={OID_IF_OPER_STATUS},
+        )
+        sw = _make_switch()
+        if_names = {1: "eth0", 2: "eth1"}
+        c = Collector(cfg=SNMPConfig())
+        results = await c._poll_interfaces(mock_client, sw, if_names)
+        # Ambas interfaces presentes aunque el walk de oper_status fallo
+        assert len(results) == 2
+        names = {r.if_name for r in results}
+        assert names == {"eth0", "eth1"}
+        # oper_status queda en UNKNOWN (default) al fallar el walk
+        for r in results:
+            assert r.oper_status == OperStatus.UNKNOWN
 
 
 class TestHelperFunctions:

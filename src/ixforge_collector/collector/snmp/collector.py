@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
@@ -25,7 +26,18 @@ from ixforge_collector.config.models import SNMPConfig
 from ixforge_collector.core_client.models import MonitoringTargets, PortTarget, SwitchTarget
 from ixforge_collector.logging import nop as nop_logger
 from ixforge_collector.metrics.victoria import Metric, Writer
-from ixforge_collector.worker.pool import run_parallel
+
+# OIDs base que se consultan via GETBULK walk para obtener contadores
+_COUNTER_OIDS = [
+    OID_IF_OPER_STATUS,
+    OID_IF_HC_IN_OCTETS,
+    OID_IF_HC_OUT_OCTETS,
+    OID_IF_HC_IN_UCAST_PKTS,
+    OID_IF_HC_OUT_UCAST_PKTS,
+    OID_IF_IN_ERRORS,
+    OID_IF_OUT_ERRORS,
+    OID_IF_OUT_DISCARDS,
+]
 
 
 @dataclass
@@ -74,10 +86,8 @@ class Collector:
             self._logger.debug("no switches to poll")
             return
 
-        # Construir mapa de puertos: "switchID:portName" -> PortTarget
         port_map = _build_port_map(targets.ports)
 
-        # Filtrar switches con SNMP configurado
         pollable = [sw for sw in targets.switches if sw.snmp_community]
         for sw in targets.switches:
             if not sw.snmp_community:
@@ -96,13 +106,25 @@ class Collector:
             ports=len(targets.ports),
         )
 
+        semaphore = asyncio.Semaphore(self._cfg.max_concurrency)
+
+        async def poll_one(sw: SwitchTarget) -> list[Metric]:
+            async with semaphore:
+                return await self._poll_switch(sw, port_map)
+
+        tasks = [asyncio.create_task(poll_one(sw)) for sw in pollable]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
         all_metrics: list[Metric] = []
-
-        async def poll_one(sw: SwitchTarget) -> None:
-            sw_metrics = await self._poll_switch(sw, port_map)
-            all_metrics.extend(sw_metrics)
-
-        await run_parallel(pollable, self._cfg.max_concurrency, poll_one)
+        for i, result in enumerate(results):
+            if isinstance(result, BaseException):
+                self._logger.warning(
+                    "switch poll failed",
+                    switch=pollable[i].name,
+                    error=str(result),
+                )
+                continue
+            all_metrics.extend(result)
 
         if all_metrics and self._writer is not None:
             await self._writer.write_batch(all_metrics)
@@ -195,10 +217,17 @@ class Collector:
             if out_pkt_rate >= 0:
                 im.packets_out_pps = out_pkt_rate
 
-            # Errores y descartes son valores absolutos, no rates
-            im.errors_in = float(pr.in_errors)
-            im.errors_out = float(pr.out_errors)
-            im.discards_out = float(pr.out_discards)
+            # Calcular rates de errores y descartes
+            in_err_rate = self._rate_calc.calculate(sw.name, pr.if_name, "in_errors", pr.in_errors, now)
+            out_err_rate = self._rate_calc.calculate(sw.name, pr.if_name, "out_errors", pr.out_errors, now)
+            out_disc_rate = self._rate_calc.calculate(sw.name, pr.if_name, "out_discards", pr.out_discards, now)
+
+            if in_err_rate >= 0:
+                im.errors_in = in_err_rate
+            if out_err_rate >= 0:
+                im.errors_out = out_err_rate
+            if out_disc_rate >= 0:
+                im.discards_out = out_disc_rate
 
             # Solo generar metricas si tenemos rates validos
             if in_rate >= 0 or out_rate >= 0:
@@ -240,32 +269,35 @@ class Collector:
         sw: SwitchTarget,
         if_names: dict[int, str],
     ) -> list[InterfacePollResult]:
-        """Obtiene contadores para las interfaces descubiertas usando GET"""
-        poll_results: list[InterfacePollResult] = []
-        now = datetime.now(UTC)
+        """Obtiene contadores para las interfaces descubiertas usando GETBULK walks
 
-        for if_index, name in if_names.items():
-            oids = [
-                f"{OID_IF_OPER_STATUS}.{if_index}",
-                f"{OID_IF_HC_IN_OCTETS}.{if_index}",
-                f"{OID_IF_HC_OUT_OCTETS}.{if_index}",
-                f"{OID_IF_HC_IN_UCAST_PKTS}.{if_index}",
-                f"{OID_IF_HC_OUT_UCAST_PKTS}.{if_index}",
-                f"{OID_IF_IN_ERRORS}.{if_index}",
-                f"{OID_IF_OUT_ERRORS}.{if_index}",
-                f"{OID_IF_OUT_DISCARDS}.{if_index}",
-            ]
+        Hace un walk por cada OID base, obteniendo todos los contadores
+        de todas las interfaces de una vez en vez de un GET por interfaz
+        """
+        counter_maps: dict[str, dict[int, object]] = {}
 
+        for oid_base in _COUNTER_OIDS:
             try:
-                results = await client.get(oids)
+                results = await client.walk(oid_base)
             except Exception:
                 self._logger.warning(
-                    "failed to get counters for interface",
+                    "failed to walk counter OID",
                     switch=sw.name,
-                    interface=name,
+                    oid=oid_base,
                 )
-                continue
+                results = []
 
+            idx_map: dict[int, object] = {}
+            for r in results:
+                r_index = _extract_if_index(r.oid, oid_base)
+                if r_index is not None:
+                    idx_map[r_index] = r.value
+            counter_maps[oid_base] = idx_map
+
+        now = datetime.now(UTC)
+        poll_results: list[InterfacePollResult] = []
+
+        for if_index, name in if_names.items():
             pr = InterfacePollResult(
                 switch_name=sw.name,
                 switch_id=str(sw.id),
@@ -274,9 +306,10 @@ class Collector:
                 timestamp=now,
             )
 
-            for r in results:
-                oid = r.oid.lstrip(".")
-                _apply_counter_value(pr, oid, r.value)
+            for oid_base, idx_map in counter_maps.items():
+                val = idx_map.get(if_index)
+                if val is not None:
+                    _apply_counter_value(pr, oid_base, val)
 
             poll_results.append(pr)
 
