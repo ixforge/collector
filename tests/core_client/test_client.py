@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
 from ixforge_collector.config.models import CoreConfig
 from ixforge_collector.core_client.client import CoreClient, _parse_targets
@@ -63,6 +64,26 @@ class TestParseTargets:
         }
         targets = _parse_targets(data)
         assert targets.ports[0].member_id is None
+
+    def test_parse_switch_missing_required_field(self) -> None:
+        data = {"switches": [{"id": "00000000-0000-0000-0000-000000000001"}]}
+        with pytest.raises(ValueError, match="invalid switch data"):
+            _parse_targets(data)
+
+    def test_parse_switch_invalid_uuid(self) -> None:
+        data = {"switches": [{"id": "not-a-uuid", "name": "sw1"}]}
+        with pytest.raises(ValueError, match="invalid switch data"):
+            _parse_targets(data)
+
+    def test_parse_port_missing_required_field(self) -> None:
+        data = {"ports": [{"id": "00000000-0000-0000-0000-000000000010"}]}
+        with pytest.raises(ValueError, match="invalid port data"):
+            _parse_targets(data)
+
+    def test_parse_member_ip_missing_required_field(self) -> None:
+        data = {"member_ips": [{"member_id": "00000000-0000-0000-0000-000000000001"}]}
+        with pytest.raises(ValueError, match="invalid member_ip data"):
+            _parse_targets(data)
 
 
 class TestCoreClient:

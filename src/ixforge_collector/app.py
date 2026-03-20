@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from ixforge_collector.collector.icmp.collector import Target
-from ixforge_collector.config.models import Config
+from ixforge_collector.config.models import Config, ICMPConfig, SNMPConfig
 from ixforge_collector.core_client.models import MonitoringTargets
 from ixforge_collector.http_server.health import ComponentHealth, HealthStatus
 from ixforge_collector.logging import setup, with_component
@@ -168,7 +168,7 @@ class App:
     def _register_icmp(
         self,
         log: structlog.stdlib.BoundLogger,
-        cfg: object,
+        cfg: ICMPConfig,
         scheduler: Scheduler,
         writer: Writer,
     ) -> None:
@@ -179,16 +179,16 @@ class App:
         target_provider = _ApiTargetProvider(self)
         collector = ICMPCollector(
             logger=self._logger,
-            cfg=cfg,  # type: ignore[arg-type]
+            cfg=cfg,
             target_provider=target_provider,
             writer=writer,
         )
-        scheduler.register(collector, cfg.interval)  # type: ignore[attr-defined]
+        scheduler.register(collector, cfg.interval)
 
     def _register_snmp(
         self,
         log: structlog.stdlib.BoundLogger,
-        cfg: object,
+        cfg: SNMPConfig,
         targets: MonitoringTargets,
         scheduler: Scheduler,
         writer: Writer,
@@ -198,17 +198,17 @@ class App:
         from ixforge_collector.collector.snmp.client import new_snmp_client
         from ixforge_collector.collector.snmp.collector import Collector as SNMPCollector
 
-        async def client_factory(sw: object) -> object:
-            return await new_snmp_client(cfg, sw)  # type: ignore[arg-type]
+        async def client_factory(sw):
+            return await new_snmp_client(cfg, sw)
 
         collector = SNMPCollector(
-            cfg=cfg,  # type: ignore[arg-type]
+            cfg=cfg,
             writer=writer,
             targets=targets,
             client_factory=client_factory,
             logger=self._logger,
         )
-        scheduler.register(collector, cfg.interval)  # type: ignore[attr-defined]
+        scheduler.register(collector, cfg.interval)
 
     async def _poll_targets_loop(self) -> None:
         """Background task que cada N segundos pide targets al Core y reconfigura si cambiaron"""

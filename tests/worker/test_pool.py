@@ -63,3 +63,35 @@ class TestRunParallel:
 
         await run_parallel([1, 2, 3], 1, fn)
         assert len(order) == 3
+
+    async def test_errors_logged_with_logger(self) -> None:
+        from unittest.mock import MagicMock
+
+        logger = MagicMock()
+        results: list[int] = []
+
+        async def fn(item: int) -> None:
+            if item == 3:
+                raise ValueError("boom")
+            results.append(item)
+
+        await run_parallel([1, 2, 3, 4, 5], 5, fn, logger=logger)
+        # Errores no se propagan
+        assert 3 not in results
+        assert len(results) == 4
+        # Pero se loguean
+        logger.warning.assert_called_once()
+        call_kwargs = logger.warning.call_args
+        assert "boom" in str(call_kwargs)
+
+    async def test_errors_silent_without_logger(self) -> None:
+        results: list[int] = []
+
+        async def fn(item: int) -> None:
+            if item == 2:
+                raise ValueError("silent")
+            results.append(item)
+
+        # Sin logger, no crashea
+        await run_parallel([1, 2, 3], 5, fn)
+        assert len(results) == 2
