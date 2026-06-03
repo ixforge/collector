@@ -2,8 +2,7 @@ import threading
 from dataclasses import dataclass
 from datetime import datetime
 
-# Maximo valor de un contador de 64-bit
-_MAX_UINT64 = 2**64
+_VALID_COUNTER_BITS = (32, 64)
 
 
 @dataclass
@@ -32,11 +31,20 @@ class RateCalculator:
         metric_name: str,
         current_value: int,
         current_time: datetime,
+        counter_bits: int = 64,
     ) -> float:
         """Calcula el rate entre el valor actual y el anterior
 
+        counter_bits define el tamano del contador SNMP (32 para Counter32,
+        64 para Counter64/HC). Esto determina el modulo usado al detectar
+        wrap-around; aplicar el modulo equivocado genera rates enormes
+        espurios cuando el contador vuelve a cero
+
         Retorna -1 si es el primer poll o si el delta de tiempo es invalido
         """
+        if counter_bits not in _VALID_COUNTER_BITS:
+            raise ValueError(f"counter_bits debe ser 32 o 64, recibido {counter_bits}")
+
         key = f"{switch_name}/{if_name}/{metric_name}"
 
         with self._lock:
@@ -55,7 +63,7 @@ class RateCalculator:
             if delta_seconds <= 0:
                 return -1
 
-            delta_value = self._calculate_delta(prev.value, current_value)
+            delta_value = self._calculate_delta(prev.value, current_value, counter_bits)
 
             return delta_value / delta_seconds
 
@@ -73,13 +81,14 @@ class RateCalculator:
         with self._lock:
             self._state.clear()
 
-    def _calculate_delta(self, prev: int, current: int) -> int:
-        """Calcula la diferencia entre dos contadores
+    def _calculate_delta(self, prev: int, current: int, counter_bits: int) -> int:
+        """Calcula la diferencia entre dos contadores manejando wrap-around
 
-        Maneja correctamente el wrap de contadores de 64-bit
+        El modulo usado debe coincidir con el ancho real del contador SNMP:
+        Counter32 wrapea a 2^32, Counter64 a 2^64
         """
         if current >= prev:
             return current - prev
 
-        # Counter wrap: max_uint64 - prev + current
-        return (_MAX_UINT64 - prev) + current
+        modulus = 1 << counter_bits
+        return (modulus - prev) + current

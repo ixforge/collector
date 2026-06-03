@@ -75,6 +75,59 @@ class TestRateCalculatorCounterWrap:
         rate = calc.calculate("switch1", "eth0", "octets_in", 0, datetime(2024, 1, 15, 10, 0, 10, tzinfo=UTC))
         assert abs(rate - 0.1) < 0.01
 
+    def test_counter32_wrap(self) -> None:
+        """Counter32 debe wrapear a 2^32, no a 2^64"""
+        calc = RateCalculator()
+        max_uint32 = 2**32 - 1
+        calc.calculate(
+            "switch1",
+            "eth0",
+            "errors_in",
+            max_uint32 - 10,
+            datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC),
+            counter_bits=32,
+        )
+        rate = calc.calculate(
+            "switch1",
+            "eth0",
+            "errors_in",
+            5,
+            datetime(2024, 1, 15, 10, 0, 10, tzinfo=UTC),
+            counter_bits=32,
+        )
+        assert abs(rate - 1.6) < 0.1
+
+    def test_counter32_wrap_not_interpreted_as_counter64(self) -> None:
+        """Wrap de Counter32 con modulo 64 produciria ~10^18 op/s; comprobamos que no pasa"""
+        calc = RateCalculator()
+        max_uint32 = 2**32 - 1
+        calc.calculate(
+            "switch1",
+            "eth0",
+            "errors_in",
+            max_uint32,
+            datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC),
+            counter_bits=32,
+        )
+        rate = calc.calculate(
+            "switch1",
+            "eth0",
+            "errors_in",
+            0,
+            datetime(2024, 1, 15, 10, 0, 10, tzinfo=UTC),
+            counter_bits=32,
+        )
+        assert rate < 1.0
+
+    def test_invalid_counter_bits_raises(self) -> None:
+        calc = RateCalculator()
+        ts = datetime(2024, 1, 15, 10, 0, 0, tzinfo=UTC)
+        try:
+            calc.calculate("switch1", "eth0", "errors_in", 0, ts, counter_bits=16)
+        except ValueError:
+            return
+        raise AssertionError("expected ValueError for invalid counter_bits")
+
 
 class TestRateCalculatorTimeDelta:
     def test_zero_time_delta_returns_negative(self) -> None:
