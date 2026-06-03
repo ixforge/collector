@@ -162,11 +162,13 @@ class TestDiscoverInterfaces:
         assert len(if_names) == 2
         assert if_names[1] == "FastEthernet0/1"
 
-    async def test_discover_interfaces_error(self) -> None:
+    async def test_discover_interfaces_both_walks_fail_returns_empty(self) -> None:
+        """Si ifName y el fallback ifDescr fallan, retornar dict vacio en vez
+        de dejar propagar la excepcion; el switch se salta sin ruido extra"""
         mock_client = MockSNMPClient(walk_error=RuntimeError("SNMP timeout"))
         c = Collector(cfg=SNMPConfig())
-        with pytest.raises(RuntimeError, match="SNMP timeout"):
-            await c._discover_interfaces(mock_client)
+        if_names = await c._discover_interfaces(mock_client)
+        assert if_names == {}
 
     async def test_discover_interfaces_with_leading_dot(self) -> None:
         mock_client = MockSNMPClient(

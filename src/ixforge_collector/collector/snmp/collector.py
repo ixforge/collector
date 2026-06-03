@@ -218,9 +218,17 @@ class Collector:
                 im.packets_out_pps = out_pkt_rate
 
             # Calcular rates de errores y descartes
-            in_err_rate = self._rate_calc.calculate(sw.name, pr.if_name, "in_errors", pr.in_errors, now)
-            out_err_rate = self._rate_calc.calculate(sw.name, pr.if_name, "out_errors", pr.out_errors, now)
-            out_disc_rate = self._rate_calc.calculate(sw.name, pr.if_name, "out_discards", pr.out_discards, now)
+            # ifInErrors/ifOutErrors/ifOutDiscards son Counter32 (RFC 2863),
+            # no tienen variantes HC de 64-bit, asi que wrapean a 2^32
+            in_err_rate = self._rate_calc.calculate(
+                sw.name, pr.if_name, "in_errors", pr.in_errors, now, counter_bits=32
+            )
+            out_err_rate = self._rate_calc.calculate(
+                sw.name, pr.if_name, "out_errors", pr.out_errors, now, counter_bits=32
+            )
+            out_disc_rate = self._rate_calc.calculate(
+                sw.name, pr.if_name, "out_discards", pr.out_discards, now, counter_bits=32
+            )
 
             if in_err_rate >= 0:
                 im.errors_in = in_err_rate
@@ -238,14 +246,25 @@ class Collector:
     async def _discover_interfaces(self, client: SNMPClient) -> dict[int, str]:
         """Hace walk de ifName para descubrir interfaces
 
-        Usa ifDescr como fallback si ifName falla
+        Usa ifDescr como fallback si ifName falla. Si el fallback tambien
+        falla se retorna un dict vacio en vez de propagar la excepcion, para
+        que un switch caido no genere ruido de error en el scheduler mas alla
+        de un warning
         """
         base_oid = OID_IF_NAME
         try:
             results = await client.walk(OID_IF_NAME)
-        except Exception:
-            self._logger.debug("ifName walk failed, trying ifDescr")
-            results = await client.walk(OID_IF_DESCR)
+        except Exception as e:
+            self._logger.debug("ifName walk failed, trying ifDescr", error=str(e))
+            try:
+                results = await client.walk(OID_IF_DESCR)
+            except Exception as e2:
+                self._logger.warning(
+                    "interface discovery failed on both ifName and ifDescr",
+                    if_name_error=str(e),
+                    if_descr_error=str(e2),
+                )
+                return {}
             base_oid = OID_IF_DESCR
 
         if not results:
