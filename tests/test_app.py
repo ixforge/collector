@@ -278,3 +278,46 @@ class TestApiTargetProvider:
         assert len(targets) == 2
         ips = {str(t.ip) for t in targets}
         assert ips == {"10.0.0.50", "10.0.0.51"}
+
+
+class TestAppPollTargetsRecovery:
+    async def test_poll_exitoso_limpia_estado_degraded(self) -> None:
+        cfg = _make_config(
+            core=CoreConfig(
+                url="http://localhost:8000",
+                api_key="test-key",
+                targets_interval=timedelta(milliseconds=10),
+            ),
+        )
+        app = App(cfg)
+        app._core_client = MagicMock()
+        app._core_client.fetch_targets = AsyncMock(return_value=MonitoringTargets())
+        app._set_status("degraded")
+
+        task = asyncio.create_task(app._poll_targets_loop())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        await task
+
+        assert app.get_health().status == "ok"
+
+    async def test_poll_fallido_no_limpia_estado_error(self) -> None:
+        # Un poll exitoso solo recupera desde degraded, no pisa otros estados
+        cfg = _make_config(
+            core=CoreConfig(
+                url="http://localhost:8000",
+                api_key="test-key",
+                targets_interval=timedelta(milliseconds=10),
+            ),
+        )
+        app = App(cfg)
+        app._core_client = MagicMock()
+        app._core_client.fetch_targets = AsyncMock(return_value=MonitoringTargets())
+        app._set_status("error")
+
+        task = asyncio.create_task(app._poll_targets_loop())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        await task
+
+        assert app.get_health().status == "error"
