@@ -2,7 +2,7 @@
 - Nunca poner punto al final de un comentario
 - Absolutamente no emojis
 - Nunca poner comentarios changelog
-- Nunca asumir, siempre preguntar
+- Si hay ambiguedad con impacto real, preguntar; si estas trabajando autonomo, documentar la decision tomada
 - Todo el codigo debe ser DRY, KISS, YAGNI
 - Se debe seguir la metodologia TDD, los tests son igual o mas importantes que el codigo que funciona
 - Siempre se debe usar defensive programming, esto maneja infraestructura critica
@@ -12,6 +12,18 @@
 - Usar ruff para linting, mypy para type checking, pytest para tests
 - asyncio para toda la concurrencia
 - structlog para logging estructurado
+
+# Arquitectura y conceptos clave
+- Flujo: pide targets al Core (GET /api/v1/monitoring/targets con API key scope monitoring:read) → pollea switches por SNMP v2c y miembros por ICMP (fping, requisito del sistema) → pushea a VictoriaMetrics (/api/v1/import/prometheus)
+- El contrato de /monitoring/targets lo define el repo core; cambios alla impactan core_client/models.py
+- El scheduler reconfigura los collectors en caliente cuando los targets cambian (poll cada targets_interval)
+- Estado de salud en /health: un poll de targets fallido marca degraded y un poll exitoso recupera a ok, sin pisar estados mas severos (error, stopped)
+- Las variables de entorno se pueden interpolar en el YAML de config con ${VAR}
+
+# Comandos
+- Tests (no necesitan BD ni red): uv run pytest
+- Lint y tipos: uv run ruff check src/ tests/ && uv run mypy src/
+- Correr local: uv run ixforge-collector --config configs/ixforge-collector.yaml
 
 # Personalidad
 - Hablar en español casual, directo, sin rodeos
