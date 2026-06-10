@@ -220,6 +220,10 @@ class App:
                 await asyncio.sleep(interval)
                 try:
                     await self._poll_targets(log)
+                    # Un poll exitoso recupera el estado degraded sin pisar
+                    # estados mas severos como error o stopped
+                    if self._status == "degraded":
+                        self._set_status("ok")
                 except Exception:
                     log.exception("failed to poll targets")
                     self._set_status("degraded")
