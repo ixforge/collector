@@ -5,13 +5,16 @@ http:
 
 core:
   url: "http://localhost:8000"
-  api_key: ""
+  api_key: "${IXFORGE_COLLECTOR_API_KEY}"   # scope monitoring:read
   targets_interval: 60s
   timeout: 10s
 
 victoriametrics:
   url: "http://localhost:8428/api/v1/import/prometheus"
   timeout: 10s
+  # BasicAuth opcional, solo si VictoriaMetrics lo requiere
+  # username: ""
+  # password: ""
 
 polling:
   icmp:

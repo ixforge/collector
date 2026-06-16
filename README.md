@@ -34,7 +34,12 @@ cp configs/ixforge-collector.example.yaml configs/ixforge-collector.yaml
 uv run ixforge-collector --config configs/ixforge-collector.yaml
 ```
 
-El collector necesita una API key del Core con scope `monitoring:read`. Las variables de entorno se pueden usar en el YAML con `${VAR_NAME}`.
+El collector necesita una API key del Core con scope `monitoring:read`, creada
+con `POST /api/v1/users/{id}/api-keys` (la key cruda se devuelve una sola vez).
+Las variables de entorno se pueden usar en el YAML con `${VAR_NAME}`; una
+variable no definida se reemplaza por string vacio (solo deja un warning, no
+aborta). Si VictoriaMetrics requiere BasicAuth, completar
+`victoriametrics.username` y `victoriametrics.password` en el YAML.
 
 ## Tests
 
@@ -53,11 +58,13 @@ docker run -v ./configs:/app/configs ixforge-collector
 
 ## Metricas
 
-**ICMP** (labels: `member_id`, `member_name`, `ip`, `af`):
+**ICMP** (labels: `ip`, `ip_version`, `asn`, `member_id`, `member_name`):
 
 `ixforge_icmp_rtt_seconds`, `ixforge_icmp_rtt_min_seconds`, `ixforge_icmp_rtt_max_seconds`, `ixforge_icmp_packet_loss_ratio`, `ixforge_icmp_packets_sent`, `ixforge_icmp_packets_received`
 
-**SNMP** (labels: `switch_id`, `hostname`, `ifname`, `member_id`, `connection_id`, `port_id`):
+Las metricas de RTT solo se emiten cuando hubo al menos una respuesta.
+
+**SNMP** (labels: `switch_id`, `switch_name`, `ifname`, `port_id`, `member_id`, `asn`):
 
 `ixforge_interface_traffic_in_bps`, `ixforge_interface_traffic_out_bps`, `ixforge_interface_packets_in_pps`, `ixforge_interface_packets_out_pps`, `ixforge_interface_errors_in`, `ixforge_interface_errors_out`, `ixforge_interface_discards_out`, `ixforge_interface_oper_status`
 
