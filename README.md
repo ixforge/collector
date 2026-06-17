@@ -53,8 +53,24 @@ uv run mypy src/
 
 ```bash
 docker build -t ixforge-collector .
-docker run -v ./configs:/app/configs ixforge-collector
+docker run \
+  -p 9200:9200 \
+  -e IXFORGE_COLLECTOR_API_KEY=<key> \
+  -v ./configs:/app/configs \
+  ixforge-collector
 ```
+
+La imagen solo trae `configs/ixforge-collector.example.yaml`; hay que montar un
+`configs/ixforge-collector.yaml` real, que es la ruta que usa el entrypoint por
+defecto. Publicar `9200` solo si quieres acceder al `/health` desde fuera del host.
+
+## Health
+
+`GET /health` (por defecto en `127.0.0.1:9200`, configurable con `http.address`)
+devuelve JSON con `status`, `uptime`, `start_time` y el estado de cada componente
+(`core`, `victoriametrics`, `scheduler`). El `status` global es uno de `starting`,
+`ok`, `degraded`, `error` o `stopped`. Responde HTTP 503 cuando `status` es `error`,
+200 en cualquier otro caso.
 
 ## Metricas
 
@@ -62,7 +78,9 @@ docker run -v ./configs:/app/configs ixforge-collector
 
 `ixforge_icmp_rtt_seconds`, `ixforge_icmp_rtt_min_seconds`, `ixforge_icmp_rtt_max_seconds`, `ixforge_icmp_packet_loss_ratio`, `ixforge_icmp_packets_sent`, `ixforge_icmp_packets_received`
 
-Las metricas de RTT solo se emiten cuando hubo al menos una respuesta.
+Las metricas de RTT solo se emiten cuando hubo al menos una respuesta. Hoy el label
+`asn` de ICMP siempre vale `0` (el ASN no viene en el target de miembro del Core;
+queda pendiente enriquecerlo).
 
 **SNMP** (labels: `switch_id`, `switch_name`, `ifname`, `port_id`, `member_id`, `asn`):
 
