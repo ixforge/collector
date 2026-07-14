@@ -1,0 +1,27 @@
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.106.1
+    ports:
+      - "127.0.0.1:8428:8428"
+    volumes:
+      - vm-data:/victoria-metrics-data
+    command:
+      - "-httpListenAddr=:8428"
+      - "-retentionPeriod=90d"
+    restart: unless-stopped
+
+  collector:
+    build: .
+    command: ["--config", "configs/ixforge-collector.yaml"]
+    ports:
+      - "9200:9200"
+    env_file:
+      - .env
+    volumes:
+      - ./configs/ixforge-collector.yaml:/app/configs/ixforge-collector.yaml:ro
+    depends_on:
+      - victoriametrics
+    restart: unless-stopped
+
+volumes:
+  vm-data:
