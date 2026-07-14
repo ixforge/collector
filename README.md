@@ -51,6 +51,24 @@ uv run mypy src/
 
 ## Docker
 
+El stack completo (collector + VictoriaMetrics) esta en `docker-compose.yml`:
+
+```bash
+cp configs/ixforge-collector.example.yaml configs/ixforge-collector.yaml
+# Editar con la URL del Core; la API key sale del .env via ${IXFORGE_COLLECTOR_API_KEY}
+
+echo "IXFORGE_COLLECTOR_API_KEY=<key>" > .env
+chmod 600 .env
+
+docker compose up -d --build
+```
+
+VictoriaMetrics queda en `127.0.0.1:8428` (solo localhost) con retencion de 90
+dias, y el collector expone su `/health` en el `9200`. El `docker-compose.dev.yaml`
+es otra cosa: solo levanta VictoriaMetrics para correr el collector a mano.
+
+Para correr solo el contenedor del collector:
+
 ```bash
 docker build -t ixforge-collector .
 docker run \
