@@ -82,6 +82,14 @@ La imagen solo trae `configs/ixforge-collector.example.yaml`; hay que montar un
 `configs/ixforge-collector.yaml` real, que es la ruta que usa el entrypoint por
 defecto. Publicar `9200` solo si quieres acceder al `/health` desde fuera del host.
 
+## Deploy
+
+`./deploy.sh <dev|prod>` despliega el commit actual de HEAD al entorno elegido.
+Aborta si hay cambios sin commitear, sube el codigo con `git archive` (preservando
+el `.env` y la config del servidor), reconstruye y verifica que el hash del codigo
+en el servidor coincida con el commit. Para prod pide confirmacion (saltable con
+`--yes`). El flujo dev -> prod completo esta en el repo `core` (`docs/staging.md`).
+
 ## Health
 
 `GET /health` (por defecto en `127.0.0.1:9200`, configurable con `http.address`)
