@@ -37,8 +37,10 @@ uv run ixforge-collector --config configs/ixforge-collector.yaml
 El collector necesita una API key del Core con scope `monitoring:read`, creada
 con `POST /api/v1/users/{id}/api-keys` (la key cruda se devuelve una sola vez).
 Las variables de entorno se pueden usar en el YAML con `${VAR_NAME}`; una
-variable no definida se reemplaza por string vacio (solo deja un warning, no
-aborta). Si VictoriaMetrics requiere BasicAuth, completar
+variable no definida se reemplaza por string vacio con un warning. Ojo: eso no
+aborta la sustitucion, pero si el valor vacio corresponde a un campo requerido
+(`core.url`, `core.api_key`, la URL de VictoriaMetrics), la validacion posterior
+sí corta el arranque. Si VictoriaMetrics requiere BasicAuth, completar
 `victoriametrics.username` y `victoriametrics.password` en el YAML.
 
 ## Tests
@@ -55,13 +57,18 @@ El stack completo (collector + VictoriaMetrics) esta en `docker-compose.yml`:
 
 ```bash
 cp configs/ixforge-collector.example.yaml configs/ixforge-collector.yaml
-# Editar con la URL del Core; la API key sale del .env via ${IXFORGE_COLLECTOR_API_KEY}
 
 echo "IXFORGE_COLLECTOR_API_KEY=<key>" > .env
 chmod 600 .env
 
 docker compose up -d --build
 ```
+
+El `example.yaml` usa `localhost` para correr el collector a mano; **para el
+compose hay que ajustar el config a la red de contenedores**: `http.address` en
+`0.0.0.0:9200` (si no, el `9200` publicado no llega) y la URL de VictoriaMetrics
+en `http://victoriametrics:8428/api/v1/import/prometheus` (el nombre del servicio,
+no `localhost`). La URL del Core queda apuntando a donde corra el Core.
 
 VictoriaMetrics queda en `127.0.0.1:8428` (solo localhost) con retencion de 90
 dias, y el collector expone su `/health` en el `9200`. El `docker-compose.dev.yaml`
@@ -111,6 +118,10 @@ queda pendiente enriquecerlo).
 **SNMP** (labels: `switch_id`, `switch_name`, `ifname`, `port_id`, `member_id`, `asn`):
 
 `ixforge_interface_traffic_in_bps`, `ixforge_interface_traffic_out_bps`, `ixforge_interface_packets_in_pps`, `ixforge_interface_packets_out_pps`, `ixforge_interface_errors_in`, `ixforge_interface_errors_out`, `ixforge_interface_discards_out`, `ixforge_interface_oper_status`
+
+Trafico, paquetes, errores y descartes son tasas por segundo calculadas entre
+polls, no contadores absolutos; `oper_status` es un estado. Igual que en ICMP, el
+label `asn` de SNMP hoy siempre vale `0`.
 
 ## Licencia
 
