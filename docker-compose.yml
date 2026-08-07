@@ -16,7 +16,7 @@ services:
     build: .
     command: ["--config", "configs/ixforge-collector.yaml"]
     ports:
-      - "9200:9200"
+      - "0.0.0.0:9200:9200"
     env_file:
       - .env
     volumes:
