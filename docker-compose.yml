@@ -25,3 +25,7 @@ services:
 
 volumes:
   vm-data:
+
+networks:
+  default:
+    enable_ipv6: true

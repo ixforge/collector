@@ -74,6 +74,13 @@ VictoriaMetrics queda en `127.0.0.1:8428` (solo localhost) con retencion de 90
 dias, y el collector expone su `/health` en el `9200`. El `docker-compose.dev.yaml`
 es otra cosa: solo levanta VictoriaMetrics para correr el collector a mano.
 
+La red del compose tiene `enable_ipv6: true`. Sin eso el container solo tiene
+IPv4 (la bridge default de Docker es v4-only) y el ICMP a los miembros con
+direccion IPv6 falla con 100% de perdida, aunque el host si los alcance. Docker
+masquerada la ULA del container hacia la interfaz de peering del host, asi que
+el collector puede pinguear v4 y v6. Requiere Docker con soporte IPv6 (probado
+en 29.x).
+
 Para correr solo el contenedor del collector:
 
 ```bash
