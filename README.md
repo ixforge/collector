@@ -81,8 +81,10 @@ Docker es v4-only) y el ping a miembros con direccion IPv6 da 100% de perdida
 aunque el host si los alcance. Docker masquerada la ULA del container hacia la
 interfaz de peering del host, asi que el collector pinguea v4 y v6. VictoriaMetrics
 queda solo en `internal` a proposito: si estuviera en la red v6, el collector la
-resolveria tambien por v6 y la conexion fallaria. Requiere Docker con soporte
-IPv6 (probado en 29.x).
+resolveria tambien por v6 y la conexion fallaria. El `/health` se publica solo en
+v4 (`0.0.0.0:9200:9200`): el server escucha en `0.0.0.0` (v4), y publicarlo tambien
+en v6 haria que un cliente v6 reciba un reset. Requiere Docker con soporte IPv6
+(probado en 29.x).
 
 Para correr solo el contenedor del collector:
 
