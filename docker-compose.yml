@@ -9,6 +9,8 @@ services:
       - "-httpListenAddr=:8428"
       - "-retentionPeriod=90d"
     restart: unless-stopped
+    networks:
+      - internal
 
   collector:
     build: .
@@ -22,10 +24,14 @@ services:
     depends_on:
       - victoriametrics
     restart: unless-stopped
+    networks:
+      - internal
+      - egress
 
 volumes:
   vm-data:
 
 networks:
-  default:
+  internal:
+  egress:
     enable_ipv6: true
