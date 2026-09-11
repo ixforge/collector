@@ -13,7 +13,11 @@ services:
       - internal
 
   collector:
-    build: .
+    build:
+      context: .
+      args:
+        DEBIAN_MIRROR: ${DEBIAN_MIRROR:-deb.debian.org}
+        DEBIAN_SECURITY_MIRROR: ${DEBIAN_SECURITY_MIRROR:-deb.debian.org}
     command: ["--config", "configs/ixforge-collector.yaml"]
     ports:
       - "0.0.0.0:9200:9200"

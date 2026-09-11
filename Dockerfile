@@ -1,6 +1,17 @@
 FROM python:3.12-slim AS base
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Mirrors de Debian configurables, por defecto los oficiales. deb.debian.org y
+# security.debian.org se degradan cada tanto y hacen fallar el build entero por
+# una descarga que no termina. Mismo patron que el Dockerfile del core
+ARG DEBIAN_MIRROR=deb.debian.org
+ARG DEBIAN_SECURITY_MIRROR=deb.debian.org
+
+RUN sed -i \
+      -e "s|URIs: http://deb.debian.org/debian$|URIs: http://${DEBIAN_MIRROR}/debian|" \
+      -e "s|URIs: http://deb.debian.org/debian-security$|URIs: http://${DEBIAN_SECURITY_MIRROR}/debian-security|" \
+      /etc/apt/sources.list.d/debian.sources \
+    && printf 'Acquire::Retries "10";\n' > /etc/apt/apt.conf.d/99-retries \
+    && apt-get update && apt-get install -y --no-install-recommends \
     fping \
     && rm -rf /var/lib/apt/lists/*
 
