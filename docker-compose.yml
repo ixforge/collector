@@ -5,9 +5,13 @@ services:
       - "127.0.0.1:8428:8428"
     volumes:
       - vm-data:/victoria-metrics-data
+      # El scrape de la API del Core. Ver configs/vm-scrape.example.yml: si el
+      # archivo no existe, docker monta un directorio y VM no arranca
+      - ./configs/vm-scrape.yml:/etc/victoria-metrics/scrape.yml:ro
     command:
       - "-httpListenAddr=:8428"
       - "-retentionPeriod=90d"
+      - "-promscrape.config=/etc/victoria-metrics/scrape.yml"
     restart: unless-stopped
     networks:
       - internal

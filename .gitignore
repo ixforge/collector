@@ -45,3 +45,4 @@ Thumbs.db
 # Config con secretos
 configs/ixforge-collector.yaml
 deploy.env
+configs/vm-scrape.yml

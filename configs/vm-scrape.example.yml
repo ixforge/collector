@@ -1,0 +1,25 @@
+# Scrape de la API del Core desde VictoriaMetrics
+#
+# El collector empuja sus metricas a VM, pero las que solo existen en el Core no
+# llegan por ahi: el conteo de prefijos por sesion BGP, por ejemplo, lo reporta
+# el agente al Core y en la base se sobreescribe en cada reporte. Sin este
+# scrape existe el valor actual y no la historia
+#
+# Copiar a configs/vm-scrape.yml (gitignored) y reemplazar CORE_HOST por donde
+# escuche la API. Tiene que ser una direccion alcanzable desde el contenedor de
+# VM, no localhost
+#
+# El endpoint /metrics del Core no pide autenticacion, asi que este scrape no
+# lleva credenciales. Si el Core queda alcanzable fuera de la red de gestion,
+# eso se cierra en el Core y no aca
+
+global:
+  # El Core limita /metrics a 60 por minuto. A 30s son 2, con margen de sobra
+  scrape_interval: 30s
+
+scrape_configs:
+  - job_name: ixforge-core
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "CORE_HOST:8000"

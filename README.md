@@ -57,12 +57,20 @@ El stack completo (collector + VictoriaMetrics) esta en `docker-compose.yml`:
 
 ```bash
 cp configs/ixforge-collector.example.yaml configs/ixforge-collector.yaml
+cp configs/vm-scrape.example.yml configs/vm-scrape.yml   # y reemplazar CORE_HOST
 
 echo "IXFORGE_COLLECTOR_API_KEY=<key>" > .env
 chmod 600 .env
 
 docker compose up -d --build
 ```
+
+`vm-scrape.yml` no es opcional: el compose lo monta, y si el archivo no existe
+Docker crea un directorio en su lugar y VictoriaMetrics no arranca. Es el scrape
+a `/metrics` del Core, que trae las metricas que el collector no puede ver
+porque no salen de SNMP ni de ICMP, como el conteo de prefijos por sesion BGP.
+`CORE_HOST` tiene que ser alcanzable desde el contenedor de VM, o sea la IP del
+host y no `localhost`
 
 El `example.yaml` usa `localhost` para correr el collector a mano; **para el
 compose hay que ajustar el config a la red de contenedores**: `http.address` en
