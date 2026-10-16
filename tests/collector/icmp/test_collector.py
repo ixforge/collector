@@ -118,7 +118,7 @@ class TestCollectorCollect:
         assert "ixforge_icmp_packet_loss_ratio" in names
 
     @patch("ixforge_collector.collector.icmp.collector.run_fping")
-    async def test_collect_fping_error_produces_loss_metrics(self, mock_fping: AsyncMock) -> None:
+    async def test_collect_fping_error_propagates_without_loss_metrics(self, mock_fping: AsyncMock) -> None:
         import structlog
 
         mock_fping.side_effect = RuntimeError("fping failed")
@@ -129,14 +129,11 @@ class TestCollectorCollect:
         writer = MockWriter()
         cfg = ICMPConfig(count=3, timeout=timedelta(seconds=5))
         c = Collector(logger=logger, cfg=cfg, target_provider=provider, writer=writer)
-        await c.collect()
-
-        # Cuando fping falla, se generan metricas con 0 packets_recv
-        assert len(writer.written) > 0
-        metric_map = {m.name: m.value for m in writer.written}
-        assert metric_map["ixforge_icmp_packets_sent"] == 3.0
-        assert metric_map["ixforge_icmp_packets_received"] == 0.0
-        assert metric_map["ixforge_icmp_packet_loss_ratio"] == 1.0
+        with pytest.raises(ExceptionGroup, match="ICMP ping failed") as error:
+            await c.collect()
+        assert isinstance(error.value.exceptions[0], RuntimeError)
+        assert str(error.value.exceptions[0]) == "fping failed"
+        assert writer.written == []
 
     @patch("ixforge_collector.collector.icmp.collector.run_fping")
     async def test_collect_ipv4_and_ipv6_targets(self, mock_fping: AsyncMock) -> None:

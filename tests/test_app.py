@@ -6,6 +6,7 @@ from ipaddress import IPv4Address
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
+import httpx
 import pytest
 
 from ixforge_collector.app import App, _ApiTargetProvider
@@ -19,6 +20,8 @@ from ixforge_collector.config.models import (
     VictoriaMetricsConfig,
 )
 from ixforge_collector.core_client.models import MemberIP, MonitoringTargets
+from ixforge_collector.http_server.health import ComponentHealth
+from ixforge_collector.metrics.victoria import Writer
 
 
 def _make_config(**overrides) -> Config:
@@ -45,6 +48,11 @@ def _mock_scheduler(is_running=False, last_run=None):
     scheduler = MagicMock()
     scheduler.is_running.return_value = is_running
     scheduler.get_last_run.return_value = last_run
+    scheduler.get_collector_health.return_value = ComponentHealth(
+        status="ok" if last_run is not None else "waiting",
+        last_run=last_run,
+        last_success=last_run,
+    )
     scheduler.stop = AsyncMock()
     return scheduler
 
@@ -93,12 +101,18 @@ class TestAppGetHealth:
         health = app.get_health()
         assert health.components["core"].status == "ok"
 
-    def test_with_vm_writer_shows_ok(self) -> None:
+    async def test_vm_writer_waits_until_first_delivery(self) -> None:
         cfg = _make_config()
         app = App(cfg)
-        app._vm_writer = AsyncMock()
-        health = app.get_health()
-        assert health.components["victoriametrics"].status == "ok"
+        client = httpx.AsyncClient(transport=httpx.MockTransport(lambda request: httpx.Response(204)))
+        writer = Writer(client, "http://vm.test/import", "", "")
+        app._vm_writer = writer
+        try:
+            assert app.get_health().components["victoriametrics"].status == "waiting"
+            await writer.write_test_point()
+            assert app.get_health().components["victoriametrics"].status == "ok"
+        finally:
+            await writer.close()
 
     def test_scheduler_running_status(self) -> None:
         cfg = _make_config()
@@ -177,6 +191,7 @@ class TestAppShutdown:
         scheduler = _mock_scheduler()
         app._scheduler = scheduler
         app._vm_writer = AsyncMock()
+        app._vm_writer.get_health = MagicMock(return_value=ComponentHealth(status="ok"))
         app._core_client = AsyncMock()
         await app.shutdown()
         app._server.shutdown.assert_awaited_once()

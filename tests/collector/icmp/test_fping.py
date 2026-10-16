@@ -118,3 +118,25 @@ class TestBuildFpingCommand:
         cmd = build_fping_command(ips, count=3, timeout=timedelta(milliseconds=500))
         t_idx = cmd.index("-t")
         assert cmd[t_idx + 1] == "500"
+
+
+@pytest.mark.parametrize(
+    ("returncode", "output"),
+    [(-9, "10.0.0.1 : - - -\n"), (0, ""), (1, "10.0.0.1 : -\n")],
+)
+async def test_run_fping_rejects_incomplete_execution(monkeypatch, returncode, output):
+    from ixforge_collector.collector.icmp.fping import run_fping
+
+    class Process:
+        async def communicate(self):
+            return None, output.encode()
+
+    process = Process()
+    process.returncode = returncode
+
+    async def spawn(*args, **kwargs):
+        return process
+
+    monkeypatch.setattr("asyncio.create_subprocess_exec", spawn)
+    with pytest.raises(RuntimeError):
+        await run_fping([IPv4Address("10.0.0.1")], count=3, timeout=timedelta(seconds=1))

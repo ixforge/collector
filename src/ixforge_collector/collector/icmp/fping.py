@@ -122,7 +122,12 @@ async def run_fping(
     _, stderr = await proc.communicate()
 
     # fping retorna 0 si todos alive, 1 si algunos unreachable, 2 si error
-    if proc.returncode is not None and proc.returncode >= 2:
+    if proc.returncode not in (0, 1):
         raise RuntimeError(f"fping failed with exit code {proc.returncode}: {stderr.decode()}")
 
-    return parse_fping_output(stderr.decode())
+    results = parse_fping_output(stderr.decode())
+    for ip in ips:
+        result = results.get(str(ip))
+        if result is None or result.packets_sent != count:
+            raise RuntimeError("fping returned incomplete results")
+    return results

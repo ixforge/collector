@@ -12,6 +12,7 @@ class ComponentHealth:
     status: str
     message: str = ""
     last_run: datetime | None = None
+    last_success: datetime | None = None
 
 
 @dataclass

@@ -116,8 +116,12 @@ class Collector:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         all_metrics: list[Metric] = []
+        errors: list[Exception] = []
         for i, result in enumerate(results):
             if isinstance(result, BaseException):
+                if not isinstance(result, Exception):
+                    raise result
+                errors.append(result)
                 self._logger.warning(
                     "switch poll failed",
                     switch=pollable[i].name,
@@ -128,6 +132,9 @@ class Collector:
 
         if all_metrics and self._writer is not None:
             await self._writer.write_batch(all_metrics)
+
+        if errors:
+            raise ExceptionGroup("SNMP poll failed", errors)
 
         self._logger.debug(
             "SNMP poll round complete",
@@ -246,10 +253,7 @@ class Collector:
     async def _discover_interfaces(self, client: SNMPClient) -> dict[int, str]:
         """Hace walk de ifName para descubrir interfaces
 
-        Usa ifDescr como fallback si ifName falla. Si el fallback tambien
-        falla se retorna un dict vacio en vez de propagar la excepcion, para
-        que un switch caido no genere ruido de error en el scheduler mas alla
-        de un warning
+        Usa ifDescr como fallback si ifName falla y propaga si ambos fallan
         """
         base_oid = OID_IF_NAME
         try:
@@ -264,7 +268,7 @@ class Collector:
                     if_name_error=str(e),
                     if_descr_error=str(e2),
                 )
-                return {}
+                raise
             base_oid = OID_IF_DESCR
 
         if not results:
@@ -304,7 +308,7 @@ class Collector:
                     switch=sw.name,
                     oid=oid_base,
                 )
-                results = []
+                raise
 
             idx_map: dict[int, object] = {}
             for r in results:

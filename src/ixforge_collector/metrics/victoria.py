@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 import httpx
 
 from ixforge_collector.config.models import VictoriaMetricsConfig
+from ixforge_collector.http_server.health import ComponentHealth
 
 
 @dataclass
@@ -48,6 +49,15 @@ class Writer:
         self._endpoint = endpoint
         self._username = username
         self._password = password
+        self._health = ComponentHealth(status="waiting")
+
+    def get_health(self) -> ComponentHealth:
+        """Retorna el resultado de la ultima entrega real"""
+        return ComponentHealth(
+            status=self._health.status,
+            last_run=self._health.last_run,
+            last_success=self._health.last_success,
+        )
 
     async def write_test_point(self) -> None:
         """Escribe un punto de prueba para verificar conectividad"""
@@ -74,15 +84,26 @@ class Writer:
         if self._username:
             auth = httpx.BasicAuth(self._username, self._password)
 
-        response = await self._client.post(
-            self._endpoint,
-            content=body,
-            headers={"Content-Type": "text/plain"},
-            auth=auth,  # type: ignore[arg-type]
-        )
+        try:
+            response = await self._client.post(
+                self._endpoint,
+                content=body,
+                headers={"Content-Type": "text/plain"},
+                auth=auth,  # type: ignore[arg-type]
+            )
 
-        if response.status_code not in (200, 204):
-            raise RuntimeError(f"unexpected status code: {response.status_code}")
+            if response.status_code not in (200, 204):
+                raise RuntimeError(f"unexpected status code: {response.status_code}")
+        except Exception:
+            self._health = ComponentHealth(
+                status="degraded",
+                last_run=datetime.now(UTC),
+                last_success=self._health.last_success,
+            )
+            raise
+
+        now = datetime.now(UTC)
+        self._health = ComponentHealth(status="ok", last_run=now, last_success=now)
 
     async def close(self) -> None:
         await self._client.aclose()

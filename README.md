@@ -121,9 +121,32 @@ en el servidor coincida con el commit. Para prod pide confirmacion (saltable con
 
 `GET /health` (por defecto en `127.0.0.1:9200`, configurable con `http.address`)
 devuelve JSON con `status`, `uptime`, `start_time` y el estado de cada componente
-(`core`, `victoriametrics`, `scheduler`). El `status` global es uno de `starting`,
+(`core`, `victoriametrics`, `scheduler` y los collectors `icmp`/`snmp` habilitados).
+El `status` global es uno de `starting`,
 `ok`, `degraded`, `error` o `stopped`. Responde HTTP 503 cuando `status` es `error`,
 200 en cualquier otro caso.
+
+Un fallo al actualizar targets, recolectar o entregar metricas deja el servicio
+en `degraded`. Cada componente se recupera con su propio resultado exitoso;
+un poll exitoso del Core no oculta un fallo de SNMP, ICMP o VictoriaMetrics.
+Los resultados de los polls tampoco reemplazan los estados `error` o `stopped`.
+
+Los collectors y VictoriaMetrics muestran `waiting` hasta completar su primera
+ronda o entrega, `ok` tras un exito y `degraded` tras un fallo. `last_run` indica
+el ultimo intento completado, incluso si fallo; `last_success` indica el ultimo
+exito y solo se incluye cuando existe. Un lote vacio no cambia la salud de
+VictoriaMetrics. Una ronda sin targets es un exito sin entrega de metricas; los
+switches sin comunidad SNMP se omiten. La salud describe el ultimo resultado
+completado, sin aplicar un limite de antiguedad a estos timestamps.
+
+Los fallos parciales de SNMP tambien degradan la ronda, aunque se entregan las
+metricas de los switches que respondieron. Un fallo de ejecucion de `fping`,
+incluso para una sola familia IP, degrada ICMP y descarta esa ronda para evitar
+publicar perdida de paquetes inventada. La ronda espera que terminen ambas
+familias IP antes de reportar el fallo y permitir la siguiente ejecucion.
+Un target que no responde a pings es
+un resultado de monitoreo valido: se publican sus metricas de perdida y el
+collector sigue sano.
 
 ## Metricas
 

@@ -117,8 +117,17 @@ class Collector:
         if v6_ips:
             coros.append(self._run_fping_safe(v6_ips))
 
-        for partial in await asyncio.gather(*coros):
+        errors: list[Exception] = []
+        for partial in await asyncio.gather(*coros, return_exceptions=True):
+            if isinstance(partial, BaseException):
+                if not isinstance(partial, Exception):
+                    raise partial
+                errors.append(partial)
+                continue
             fping_results.update(partial)
+
+        if errors:
+            raise ExceptionGroup("ICMP ping failed", errors)
 
         # Convertir resultados de fping a PingResult
         now = datetime.now(UTC)
@@ -168,4 +177,4 @@ class Collector:
                 error=str(exc),
                 ip_count=len(ips),
             )
-            return {}
+            raise

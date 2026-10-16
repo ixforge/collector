@@ -37,6 +37,7 @@ class App:
         self._lock = threading.Lock()
         self._poll_task: asyncio.Task | None = None
         self._targets: MonitoringTargets = MonitoringTargets()
+        self._core_poll_failed = False
 
     async def start(self) -> None:
         """Inicia todos los componentes en orden"""
@@ -220,13 +221,16 @@ class App:
                 await asyncio.sleep(interval)
                 try:
                     await self._poll_targets(log)
+                    self._core_poll_failed = False
                     # Un poll exitoso recupera el estado degraded sin pisar
                     # estados mas severos como error o stopped
                     if self._status == "degraded":
                         self._set_status("ok")
                 except Exception:
                     log.exception("failed to poll targets")
-                    self._set_status("degraded")
+                    self._core_poll_failed = True
+                    if self._status in ("ok", "degraded"):
+                        self._set_status("degraded")
         except asyncio.CancelledError:
             pass
 
@@ -302,9 +306,12 @@ class App:
         with self._lock:
             components = self._build_component_health()
             uptime = self._format_uptime()
+            status = self._status
+            if status == "ok" and any(c.status == "degraded" for c in components.values()):
+                status = "degraded"
 
             return HealthStatus(
-                status=self._status,
+                status=status,
                 uptime=uptime,
                 start_time=self._start_time,
                 components=components,
@@ -315,10 +322,12 @@ class App:
         components: dict[str, ComponentHealth] = {}
 
         components["core"] = ComponentHealth(
-            status="ok" if self._core_client is not None else "not_connected",
+            status=("degraded" if self._core_poll_failed else "ok")
+            if self._core_client is not None
+            else "not_connected",
         )
-        components["victoriametrics"] = ComponentHealth(
-            status="ok" if self._vm_writer is not None else "not_connected",
+        components["victoriametrics"] = (
+            self._vm_writer.get_health() if self._vm_writer is not None else ComponentHealth(status="not_connected")
         )
 
         if self._scheduler is not None:
@@ -333,11 +342,7 @@ class App:
             for name, enabled in collector_enabled:
                 if not enabled:
                     continue
-                last_run = self._scheduler.get_last_run(name)
-                if last_run is not None:
-                    components[name] = ComponentHealth(status="ok", last_run=last_run)
-                else:
-                    components[name] = ComponentHealth(status="waiting")
+                components[name] = self._scheduler.get_collector_health(name)
 
         return components
 

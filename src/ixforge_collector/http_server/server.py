@@ -88,6 +88,8 @@ def _health_to_dict(health: HealthStatus) -> dict:
                 c["message"] = comp.message
             if comp.last_run is not None:
                 c["last_run"] = comp.last_run.isoformat()
+            if comp.last_success is not None:
+                c["last_success"] = comp.last_success.isoformat()
             comps[name] = c
         result["components"] = comps
 

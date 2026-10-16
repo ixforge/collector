@@ -162,13 +162,11 @@ class TestDiscoverInterfaces:
         assert len(if_names) == 2
         assert if_names[1] == "FastEthernet0/1"
 
-    async def test_discover_interfaces_both_walks_fail_returns_empty(self) -> None:
-        """Si ifName y el fallback ifDescr fallan, retornar dict vacio en vez
-        de dejar propagar la excepcion; el switch se salta sin ruido extra"""
+    async def test_discover_interfaces_both_walks_fail_propagates(self) -> None:
         mock_client = MockSNMPClient(walk_error=RuntimeError("SNMP timeout"))
         c = Collector(cfg=SNMPConfig())
-        if_names = await c._discover_interfaces(mock_client)
-        assert if_names == {}
+        with pytest.raises(RuntimeError, match="SNMP timeout"):
+            await c._discover_interfaces(mock_client)
 
     async def test_discover_interfaces_with_leading_dot(self) -> None:
         mock_client = MockSNMPClient(
@@ -244,7 +242,7 @@ class TestPollInterfaces:
         assert by_name["eth0"].in_octets == 1000
         assert by_name["eth1"].in_octets == 2000
 
-    async def test_poll_interfaces_continues_on_walk_failure(self) -> None:
+    async def test_poll_interfaces_propagates_walk_failure(self) -> None:
         mock_client = MockSNMPClientWithFallback(
             walk_results={
                 OID_IF_HC_IN_OCTETS: [
@@ -266,14 +264,8 @@ class TestPollInterfaces:
         sw = _make_switch()
         if_names = {1: "eth0", 2: "eth1"}
         c = Collector(cfg=SNMPConfig())
-        results = await c._poll_interfaces(mock_client, sw, if_names)
-        # Ambas interfaces presentes aunque el walk de oper_status fallo
-        assert len(results) == 2
-        names = {r.if_name for r in results}
-        assert names == {"eth0", "eth1"}
-        # oper_status queda en UNKNOWN (default) al fallar el walk
-        for r in results:
-            assert r.oper_status == OperStatus.UNKNOWN
+        with pytest.raises(RuntimeError, match="SNMP walk failed"):
+            await c._poll_interfaces(mock_client, sw, if_names)
 
 
 class TestHelperFunctions:

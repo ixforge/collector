@@ -4,6 +4,7 @@ from typing import Any
 
 import structlog
 
+from ixforge_collector.http_server.health import ComponentHealth
 from ixforge_collector.logging import with_component
 
 
@@ -63,6 +64,17 @@ class Scheduler:
     def is_running(self) -> bool:
         return self._running
 
+    def get_collector_health(self, name: str) -> ComponentHealth:
+        """Retorna el resultado de la ultima ronda completada"""
+        task = self._tasks.get(name)
+        if task is None:
+            return ComponentHealth(status="waiting")
+        return ComponentHealth(
+            status=task.status,
+            last_run=task.last_run,
+            last_success=task.last_success,
+        )
+
     def collectors(self) -> dict[str, Any]:
         """Retorna los collectors registrados"""
         return {name: t.collector for name, t in self._tasks.items()}
@@ -75,6 +87,8 @@ class _Task:
         self.collector = collector
         self.interval = interval
         self.last_run: datetime | None = None
+        self.last_success: datetime | None = None
+        self.status = "waiting"
 
     async def _run(self, logger: structlog.stdlib.BoundLogger) -> None:
         """Ejecuta el collector y registra errores"""
@@ -86,11 +100,14 @@ class _Task:
         except Exception:
             duration = datetime.now(UTC) - start
             self.last_run = datetime.now(UTC)
+            self.status = "degraded"
             logger.error("collector failed", collector=name, duration=str(duration), exc_info=True)
             return
 
         duration = datetime.now(UTC) - start
         self.last_run = datetime.now(UTC)
+        self.last_success = self.last_run
+        self.status = "ok"
         logger.debug("collector completed", collector=name, duration=str(duration))
 
     async def loop(self, logger: structlog.stdlib.BoundLogger) -> None:
