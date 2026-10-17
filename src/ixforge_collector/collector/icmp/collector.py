@@ -38,8 +38,6 @@ def validate_config(cfg: ICMPConfig) -> None:
         raise InvalidConfigError("count must be > 0")
     if cfg.timeout <= timedelta(0):
         raise InvalidConfigError("timeout must be > 0")
-    if cfg.max_concurrency <= 0:
-        raise InvalidConfigError("max_concurrency must be > 0")
 
 
 class Collector:
@@ -94,7 +92,6 @@ class Collector:
             "reconfigured",
             count=config.count,
             timeout=config.timeout,
-            max_concurrency=config.max_concurrency,
         )
 
     async def _ping_targets(self, targets: list[Target]) -> list[PingResult]:

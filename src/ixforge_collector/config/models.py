@@ -57,7 +57,6 @@ class ICMPConfig(BaseModel):
     interval: Duration = timedelta(seconds=30)
     count: int = 3
     timeout: Duration = timedelta(seconds=5)
-    max_concurrency: int = 50
 
 
 class SNMPConfig(BaseModel):

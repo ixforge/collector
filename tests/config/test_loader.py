@@ -49,3 +49,16 @@ class TestLoadFromFile:
         cfg, _ = load_from_file(config_testdata / "valid.yaml")
         assert cfg.log_level == "info"
         assert cfg.http.address == "127.0.0.1:9200"
+
+
+def test_config_with_retired_icmp_max_concurrency_still_loads(config_testdata: Path, tmp_path: Path) -> None:
+    legacy = yaml.safe_load((config_testdata / "valid.yaml").read_text())
+    legacy["polling"] = {"icmp": {"enabled": True, "count": 4, "max_concurrency": 50}}
+    path = tmp_path / "legacy.yaml"
+    path.write_text(yaml.safe_dump(legacy))
+
+    cfg, missing = load_from_file(path)
+
+    assert cfg.polling.icmp.count == 4
+    assert not hasattr(cfg.polling.icmp, "max_concurrency")
+    assert missing == []

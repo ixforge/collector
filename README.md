@@ -63,7 +63,6 @@ interpreta como segundos).
 | `polling.icmp.interval` | `30s` | Intervalo entre rondas |
 | `polling.icmp.count` | `3` | Pings por target en cada ronda (`fping -C`) |
 | `polling.icmp.timeout` | `5s` | Timeout de cada ping (`fping -t`) |
-| `polling.icmp.max_concurrency` | `50` | Hoy no tiene efecto: `fping` recibe todas las IPs de una familia en una sola ejecución |
 | `polling.snmp.enabled` | `false` | Habilita el collector SNMP |
 | `polling.snmp.interval` | `60s` | Intervalo entre rondas |
 | `polling.snmp.timeout` | `10s` | Timeout de cada request SNMP |

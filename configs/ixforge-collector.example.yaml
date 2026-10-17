@@ -22,7 +22,6 @@ polling:
     interval: 30s
     count: 3
     timeout: 5s
-    max_concurrency: 50
   snmp:
     enabled: false
     interval: 60s

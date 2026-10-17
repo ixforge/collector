@@ -49,7 +49,7 @@ class MockWriter:
 
 class TestValidateConfig:
     def test_valid_config(self) -> None:
-        cfg = ICMPConfig(count=3, timeout=timedelta(seconds=5), max_concurrency=10)
+        cfg = ICMPConfig(count=3, timeout=timedelta(seconds=5))
         validate_config(cfg)
 
     def test_zero_count_raises(self) -> None:
@@ -65,11 +65,6 @@ class TestValidateConfig:
     def test_zero_timeout_raises(self) -> None:
         cfg = ICMPConfig(timeout=timedelta(0))
         with pytest.raises(InvalidConfigError, match="timeout"):
-            validate_config(cfg)
-
-    def test_zero_max_concurrency_raises(self) -> None:
-        cfg = ICMPConfig(max_concurrency=0)
-        with pytest.raises(InvalidConfigError, match="max_concurrency"):
             validate_config(cfg)
 
 
@@ -172,7 +167,7 @@ class TestCollectorReconfigure:
         provider = MockTargetProvider()
         writer = MockWriter()
         c = Collector(logger=logger, cfg=ICMPConfig(), target_provider=provider, writer=writer)
-        new_cfg = ICMPConfig(count=5, timeout=timedelta(seconds=10), max_concurrency=20)
+        new_cfg = ICMPConfig(count=5, timeout=timedelta(seconds=10))
         await c.reconfigure(new_cfg)
         assert c._cfg.count == 5
 
