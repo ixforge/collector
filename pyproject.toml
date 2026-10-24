@@ -1,6 +1,6 @@
 [project]
 name = "ixforge-collector"
-version = "0.1.0"
+version = "0.3.0"
 description = "SNMP and ICMP monitoring daemon for IXP infrastructure"
 readme = "README.md"
 authors = [
