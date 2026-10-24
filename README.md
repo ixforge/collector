@@ -177,6 +177,10 @@ disponible y si no con `ssh` (la variable `SSH` permite elegir otro). Para prod
 pide escribir `prod` como confirmación (se omite con `--yes` o `-y`). El flujo
 dev -> prod completo está en el repo `core` (`docs/staging.md`).
 
+Para actualizar un IXP en producción entre versiones (los tres repos van en el
+mismo tag), seguir la [guía de actualización](https://github.com/ixforge/core/blob/main/docs/migracion.md)
+del repo `core`.
+
 ## Health
 
 `GET /health` (por defecto en `127.0.0.1:9200`, configurable con `http.address`)
