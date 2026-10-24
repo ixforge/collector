@@ -20,7 +20,7 @@ RUN groupadd --gid 1000 ixforge && \
 
 WORKDIR /app
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /usr/local/bin/uv
 
 COPY pyproject.toml uv.lock ./
 # Solo dependencias: el proyecto se instala despues de copiar src y README
